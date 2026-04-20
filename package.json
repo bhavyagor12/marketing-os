@@ -1,0 +1,28 @@
+{
+  "name": "marketing-os",
+  "private": true,
+  "version": "0.0.1",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:generate": "pnpm -F @marketing-os/db generate",
+    "db:migrate": "pnpm -F @marketing-os/db migrate",
+    "db:push": "pnpm -F @marketing-os/db push",
+    "db:studio": "pnpm -F @marketing-os/db studio",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "agents:dev": "cd apps/agents && uv run uvicorn agents.main:app --reload --port 8000"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.3",
+    "prettier": "^3.3.3"
+  }
+}
