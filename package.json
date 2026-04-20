@@ -8,7 +8,6 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
@@ -18,9 +17,13 @@
     "db:studio": "pnpm -F @marketing-os/db studio",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
-    "agents:dev": "cd apps/agents && uv run uvicorn agents.main:app --reload --port 8000"
+    "dev:web": "pnpm -F @marketing-os/web dev",
+    "dev:worker": "pnpm -F @marketing-os/worker dev",
+    "dev:agents": "cd apps/agents && .venv/bin/uvicorn agents.main:app --reload --port 8000",
+    "dev": "concurrently -n web,worker,agents -c cyan,magenta,yellow -k \"pnpm dev:web\" \"pnpm dev:worker\" \"pnpm dev:agents\""
   },
   "devDependencies": {
+    "concurrently": "^9.1.0",
     "turbo": "^2.3.0",
     "typescript": "^5.6.3",
     "prettier": "^3.3.3"

@@ -1,4 +1,9 @@
+import { config } from 'dotenv';
+import { resolve } from 'node:path';
 import { defineConfig } from 'drizzle-kit';
+
+// drizzle-kit is invoked with cwd=packages/db; load the monorepo-root .env
+config({ path: resolve(process.cwd(), '../../.env') });
 
 const url = process.env.DATABASE_URL;
 if (!url) {
@@ -12,5 +17,4 @@ export default defineConfig({
   dbCredentials: { url },
   verbose: true,
   strict: true,
-  extensionsFilters: ['postgis'],
 });

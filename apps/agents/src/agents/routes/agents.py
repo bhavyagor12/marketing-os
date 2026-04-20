@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from ..auth import verify_internal_token
+from ..graphs.brand_summarize import run_brand_summarize
 from ..graphs.content import content_graph
 from ..graphs.planner import planner_graph
 
@@ -19,6 +20,10 @@ class ContentRunRequest(BaseModel):
     plan_item: dict
     platform: str
     brand: dict | None = None
+
+
+class BrandSummarizeRequest(BaseModel):
+    organization_id: str
 
 
 @router.post("/planner/run")
@@ -44,3 +49,12 @@ async def run_content(req: ContentRunRequest) -> dict:
     }
     result = await content_graph.ainvoke(state)
     return {"draft": result.get("draft")}
+
+
+@router.post("/brand_summarize/run")
+async def run_brand_summarize_route(req: BrandSummarizeRequest) -> dict:
+    try:
+        profile = await run_brand_summarize(req.organization_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"profile": profile}

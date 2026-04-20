@@ -1,7 +1,14 @@
+import { config } from 'dotenv';
+import { resolve } from 'node:path';
+
+config({ path: resolve(process.cwd(), '../../.env') });
+
 import { Worker } from 'bullmq';
 import { connection } from './queues';
 import { processPublish } from './jobs/publish';
 import { processAnalytics } from './jobs/analytics';
+import { processIngestWebsite } from './jobs/ingest-website';
+import { processIngestPdf } from './jobs/ingest-pdf';
 
 const publishWorker = new Worker('publish', processPublish, {
   connection,
@@ -13,20 +20,34 @@ const analyticsWorker = new Worker('analytics', processAnalytics, {
   concurrency: 8,
 });
 
-publishWorker.on('ready', () => console.log('[worker] publish ready'));
-analyticsWorker.on('ready', () => console.log('[worker] analytics ready'));
+const ingestWebsiteWorker = new Worker('ingest-website', processIngestWebsite, {
+  connection,
+  concurrency: 2,
+});
 
-publishWorker.on('failed', (job, err) =>
-  console.error(`[worker] publish failed id=${job?.id}`, err),
-);
-analyticsWorker.on('failed', (job, err) =>
-  console.error(`[worker] analytics failed id=${job?.id}`, err),
-);
+const ingestPdfWorker = new Worker('ingest-pdf', processIngestPdf, {
+  connection,
+  concurrency: 2,
+});
+
+for (const [name, w] of [
+  ['publish', publishWorker],
+  ['analytics', analyticsWorker],
+  ['ingest-website', ingestWebsiteWorker],
+  ['ingest-pdf', ingestPdfWorker],
+] as const) {
+  w.on('ready', () => console.log(`[worker] ${name} ready`));
+  w.on('failed', (job, err) => console.error(`[worker] ${name} failed id=${job?.id}`, err));
+}
 
 async function shutdown() {
   console.log('[worker] shutting down...');
-  await publishWorker.close();
-  await analyticsWorker.close();
+  await Promise.all([
+    publishWorker.close(),
+    analyticsWorker.close(),
+    ingestWebsiteWorker.close(),
+    ingestPdfWorker.close(),
+  ]);
   await connection.quit();
   process.exit(0);
 }
