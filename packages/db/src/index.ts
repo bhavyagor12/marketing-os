@@ -20,3 +20,5 @@ export const db = drizzle(client, { schema });
 export { schema };
 export type DB = typeof db;
 export * from './schema';
+export { emit } from './emit';
+export type { EmitParams, EmitActor } from './emit';

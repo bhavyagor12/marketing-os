@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { and, eq, count } from 'drizzle-orm';
+import { and, eq, count, desc, gte } from 'drizzle-orm';
 import {
   db,
   brandProfiles,
@@ -7,6 +7,9 @@ import {
   aiProviderCredentials,
   socialConnections,
   campaigns,
+  events,
+  member,
+  user,
 } from '@marketing-os/db';
 import {
   Sparkles,
@@ -22,6 +25,7 @@ import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { requireOrgSession } from '@/lib/require-session';
+import { ActivityFeed } from '@/components/events/ActivityFeed';
 
 export default async function OverviewPage() {
   const { session, activeOrgId } = await requireOrgSession();
@@ -64,6 +68,35 @@ export default async function OverviewPage() {
   const campaignCount = campaignCountRow?.count ?? 0;
 
   const firstName = session.user.name?.split(' ')[0] ?? 'there';
+
+  // Activity feed data
+  const weekAgo = new Date(Date.now() - 7 * 86_400_000);
+  const recentEvents = await db
+    .select()
+    .from(events)
+    .where(eq(events.organizationId, activeOrgId))
+    .orderBy(desc(events.occurredAt))
+    .limit(20);
+
+  const myWeekEvents = await db
+    .select({ type: events.type })
+    .from(events)
+    .where(
+      and(
+        eq(events.organizationId, activeOrgId),
+        eq(events.actorUserId, session.user.id),
+        gte(events.occurredAt, weekAgo),
+      ),
+    );
+
+  const members = await db
+    .select({ userId: member.userId, name: user.name })
+    .from(member)
+    .innerJoin(user, eq(member.userId, user.id))
+    .where(eq(member.organizationId, activeOrgId));
+
+  const users = members.map((m) => ({ id: m.userId, name: m.name }));
+  const myWeekCount = myWeekEvents.length;
 
   const steps = [
     {
@@ -189,6 +222,49 @@ export default async function OverviewPage() {
                 title="Add API key"
                 description="BYO Anthropic or OpenAI"
               />
+            </CardBody>
+          </Card>
+        </div>
+
+        <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <CardHeader
+              title="Recent activity"
+              subtitle="Everything that happened in your workspace."
+              action={
+                <Link
+                  href="/dashboard/activity"
+                  className="text-xs font-medium text-stone-600 underline hover:text-stone-900"
+                >
+                  View all →
+                </Link>
+              }
+            />
+            <CardBody>
+              <ActivityFeed events={recentEvents as never} users={users} />
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader title="You this week" />
+            <CardBody>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-semibold tracking-tight text-stone-900">
+                  {myWeekCount}
+                </span>
+                <span className="text-sm text-stone-500">
+                  action{myWeekCount === 1 ? '' : 's'}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-stone-500">
+                In the last 7 days. Impact metrics arrive once publishing + tracking are wired.
+              </p>
+              <Link
+                href="/dashboard/activity?scope=me&range=7d"
+                className="mt-4 inline-block text-xs font-medium text-stone-900 underline hover:text-stone-700"
+              >
+                See what you did →
+              </Link>
             </CardBody>
           </Card>
         </div>

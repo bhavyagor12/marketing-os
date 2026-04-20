@@ -39,6 +39,13 @@ export default function SignUpPage() {
 
       await authClient.organization.setActive({ organizationId: orgRes.data!.id });
 
+      // Emit the org.created event so the activity feed has something from minute zero.
+      await fetch('/api/events/org-created', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: orgRes.data!.id, orgName }),
+      }).catch(() => {});
+
       router.push('/dashboard');
       router.refresh();
     } catch (err) {

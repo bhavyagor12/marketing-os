@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { eq, desc } from 'drizzle-orm';
 import {
   db,
+  emit,
   brandIngestionSources,
   brandProfiles,
   brandPersonas,
@@ -12,6 +13,7 @@ import {
   brandProducts,
   brandCompetitors,
 } from '@marketing-os/db';
+import { EventType, EventSubjectType } from '@marketing-os/shared';
 import { requireOrgSession } from '@/lib/require-session';
 import { uploadBlob } from '@/lib/s3';
 
@@ -62,6 +64,15 @@ export async function addWebsiteSource(formData: FormData) {
     userId: session.user.id,
   });
 
+  await emit({
+    organizationId: activeOrgId,
+    type: EventType.BrandSourceAdded,
+    actor: { userId: session.user.id },
+    subject: { type: EventSubjectType.BrandSource, id: row!.id },
+    properties: { kind: 'website', url },
+    message: `Added website source ${url}`,
+  });
+
   revalidatePath('/dashboard/brand');
   return { ok: true };
 }
@@ -105,6 +116,15 @@ export async function addPdfSource(formData: FormData) {
     userId: session.user.id,
   });
 
+  await emit({
+    organizationId: activeOrgId,
+    type: EventType.BrandSourceAdded,
+    actor: { userId: session.user.id },
+    subject: { type: EventSubjectType.BrandSource, id: row!.id },
+    properties: { kind: 'pdf', filename: file.name, sizeBytes: file.size },
+    message: `Uploaded PDF ${file.name}`,
+  });
+
   revalidatePath('/dashboard/brand');
   return { ok: true };
 }
@@ -121,10 +141,28 @@ export async function listSources() {
 }
 
 export async function deleteSource(id: string) {
-  const { activeOrgId } = await requireOrgSession();
+  const { session, activeOrgId } = await requireOrgSession();
+  const [row] = await db
+    .select()
+    .from(brandIngestionSources)
+    .where(eq(brandIngestionSources.id, id))
+    .limit(1);
   await db
     .delete(brandIngestionSources)
     .where(eq(brandIngestionSources.id, id));
+  if (row) {
+    await emit({
+      organizationId: activeOrgId,
+      type: EventType.BrandSourceDeleted,
+      actor: { userId: session.user.id },
+      subject: { type: EventSubjectType.BrandSource, id },
+      properties: {
+        kind: row.kind,
+        label: row.kind === 'website' ? row.url : row.filename,
+      },
+      message: `Deleted ${row.kind === 'website' ? row.url : row.filename}`,
+    });
+  }
   revalidatePath('/dashboard/brand');
   return { ok: true };
 }
@@ -261,6 +299,20 @@ export async function generateBrandProfile() {
   if (competitorRows.length) {
     await db.insert(brandCompetitors).values(competitorRows as never);
   }
+
+  await emit({
+    organizationId: activeOrgId,
+    type: EventType.BrandProfileGenerated,
+    actor: { userId: session.user.id },
+    subject: { type: EventSubjectType.BrandProfile, id: activeOrgId },
+    properties: {
+      personas: personaRows.length,
+      valuePropositions: vpRows.length,
+      products: productRows.length,
+      competitors: competitorRows.length,
+    },
+    message: `Generated brand profile (${personaRows.length} personas, ${vpRows.length} value props)`,
+  });
 
   revalidatePath('/dashboard/brand');
   return { ok: true };

@@ -4,3 +4,4 @@ export * from './publishing';
 export * from './integrations';
 export * from './brand';
 export * from './workflow';
+export * from './events';

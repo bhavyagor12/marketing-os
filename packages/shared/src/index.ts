@@ -3,3 +3,4 @@ export * from './campaigns';
 export * from './content';
 export * from './brand';
 export * from './agents';
+export * from './events';

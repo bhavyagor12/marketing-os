@@ -9,6 +9,7 @@ import {
   Plug,
   Users,
   Settings,
+  Activity,
   type LucideIcon,
 } from 'lucide-react';
 import { cx } from '@/lib/cx';
@@ -19,6 +20,7 @@ const GROUPS: { heading?: string; items: NavItem[] }[] = [
   {
     items: [
       { href: '/dashboard', label: 'Overview', icon: LayoutGrid },
+      { href: '/dashboard/activity', label: 'Activity', icon: Activity },
       { href: '/dashboard/campaigns', label: 'Campaigns', icon: Megaphone },
       { href: '/dashboard/brand', label: 'Brand', icon: Sparkles },
     ],
