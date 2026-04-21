@@ -66,6 +66,14 @@ export const EventType = {
   OutreachSent: 'outreach.sent',
   OutreachReplied: 'outreach.replied',
   OutreachBounced: 'outreach.bounced',
+
+  // --- Leads / CRM ---
+  LeadCreated: 'lead.created',
+  LeadImported: 'lead.imported',
+  LeadUpdated: 'lead.updated',
+  LeadStatusChanged: 'lead.status_changed',
+  LeadDeleted: 'lead.deleted',
+  LeadUnsubscribed: 'lead.unsubscribed',
 } as const;
 
 export type EventTypeValue = (typeof EventType)[keyof typeof EventType];
@@ -86,6 +94,7 @@ export const EventSubjectType = {
   AiCredential: 'ai_credential',
   SocialConnection: 'social_connection',
   Outreach: 'outreach',
+  Lead: 'lead',
 } as const;
 
 export type EventSubjectTypeValue =

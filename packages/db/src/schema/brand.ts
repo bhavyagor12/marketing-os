@@ -204,6 +204,8 @@ export const brandIngestionSources = pgTable(
     error: text('error'),
     pageCount: integer('page_count').notNull().default(0),
     chunkCount: integer('chunk_count').notNull().default(0),
+    // Free-form: { competitorId?: uuid, note?: string, ... }
+    metadata: jsonb('metadata'),
     startedAt: timestamp('started_at'),
     completedAt: timestamp('completed_at'),
     createdByUserId: text('created_by_user_id')

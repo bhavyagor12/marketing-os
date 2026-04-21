@@ -13,7 +13,7 @@ export const contentTypeSchema = z.enum([
 ]);
 export type ContentType = z.infer<typeof contentTypeSchema>;
 
-export const aiProviderSchema = z.enum(['anthropic', 'openai', 'google']);
+export const aiProviderSchema = z.enum(['anthropic', 'openai', 'google', 'voyage']);
 export type AiProvider = z.infer<typeof aiProviderSchema>;
 
 export const billingSourceSchema = z.enum(['byo_key', 'managed']);

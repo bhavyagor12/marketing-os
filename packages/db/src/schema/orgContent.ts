@@ -79,12 +79,20 @@ export const commits = pgTable(
     // Whether this commit was authored by a human or an agent; useful for audit.
     authoredBy: text('authored_by').notNull().default('human'),
     agentRunId: uuid('agent_run_id'),
+    // For drafts generated from a plan item — index into campaigns.plan.posts. Null for
+    // commits that aren't directly tied to a planned post (e.g., manual edits, future types).
+    planItemIndex: integer('plan_item_index'),
+    variantLabel: text('variant_label'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (t) => ({
     hashIdx: index('commits_hash_idx').on(t.contentHash),
     branchIdx: index('commits_branch_idx').on(t.branchId),
     parentIdx: index('commits_parent_idx').on(t.parentCommitId),
+    campaignPlanItemIdx: index('commits_campaign_plan_item_idx').on(
+      t.campaignId,
+      t.planItemIndex,
+    ),
   }),
 );
 

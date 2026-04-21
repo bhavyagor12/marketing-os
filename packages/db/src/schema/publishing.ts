@@ -1,4 +1,12 @@
-import { pgTable, uuid, text, timestamp, jsonb, integer, index } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  jsonb,
+  integer,
+  index,
+} from 'drizzle-orm/pg-core';
 import type { PublishStatus, Platform } from '@marketing-os/shared';
 import { user, organization } from './auth';
 import { commits } from './orgContent';
@@ -52,6 +60,8 @@ export const publishes = pgTable(
     error: text('error'),
     attemptCount: integer('attempt_count').notNull().default(0),
     publishedAt: timestamp('published_at'),
+    // Platform-specific payload: recipient for email, custom subject overrides, etc.
+    metadata: jsonb('metadata'),
     createdByUserId: text('created_by_user_id')
       .notNull()
       .references(() => user.id),

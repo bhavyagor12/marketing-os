@@ -8,6 +8,7 @@ from langgraph.graph import END, START, StateGraph
 
 from ..clients.anthropic_client import make_anthropic
 from ..config import settings
+from ..retrieval import retrieve_brand_chunks
 from ..state import PlannerState
 
 SYSTEM_PROMPT = """You are a senior marketing strategist. Given a campaign brief and the
@@ -86,15 +87,27 @@ async def plan_node(state: PlannerState) -> dict:
         raise ValueError("planner requires brand.organization_id")
 
     brand_context = await _load_brand_context(org_id)
+
+    retrieval_query = " | ".join(
+        filter(None, [brief.get("goal"), brief.get("product"), brief.get("audience")])
+    ) or "brand strategy"
+    relevant_chunks = await retrieve_brand_chunks(
+        organization_id=org_id, query=retrieval_query, k=8
+    )
+
     model = await make_anthropic(
         organization_id=org_id, model="claude-opus-4-7", max_tokens=3072
     )
 
-    user_content = (
-        f"Brief:\n{json.dumps(brief, indent=2)}\n\n"
-        f"Brand context:\n{json.dumps(brand_context, indent=2, default=str)}\n\n"
-        "Produce the campaign plan JSON now."
-    )
+    parts = [
+        f"Brief:\n{json.dumps(brief, indent=2)}",
+        f"Brand context:\n{json.dumps(brand_context, indent=2, default=str)}",
+    ]
+    if relevant_chunks:
+        corpus = "\n\n---\n\n".join(c[:1200] for c in relevant_chunks)
+        parts.append(f"Retrieved brand corpus snippets:\n{corpus}")
+    parts.append("Produce the campaign plan JSON now.")
+    user_content = "\n\n".join(parts)
     resp = await model.ainvoke(
         [SystemMessage(content=SYSTEM_PROMPT), HumanMessage(content=user_content)]
     )

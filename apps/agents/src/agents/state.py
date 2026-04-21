@@ -36,4 +36,5 @@ class ContentState(TypedDict, total=False):
     platform: Literal["x", "linkedin", "instagram", "facebook", "email"]
     draft: str | None
     iterations: int
+    past_winners: list[dict]  # [{content, metrics_summary}] for auto-iterate
     messages: Annotated[list, add_messages]

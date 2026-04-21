@@ -74,6 +74,7 @@ export const member = pgTable('member', {
     .references(() => user.id, { onDelete: 'cascade' }),
   role: text('role').notNull().default('member'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
+  notificationsLastReadAt: timestamp('notifications_last_read_at'),
 });
 
 export const invitation = pgTable('invitation', {

@@ -2,6 +2,7 @@ import { db, emit, brandIngestionSources, brandMemory } from '@marketing-os/db';
 import { EventType, EventSubjectType } from '@marketing-os/shared';
 import { eq } from 'drizzle-orm';
 import { chunkText } from './chunking';
+import { embedBrandMemoryChunks } from './embeddings';
 
 type SourceRow = typeof brandIngestionSources.$inferSelect;
 
@@ -104,8 +105,27 @@ export async function saveChunks(params: {
   }));
 
   const batchSize = 100;
+  const insertedIds: string[] = [];
   for (let i = 0; i < rows.length; i += batchSize) {
-    await db.insert(brandMemory).values(rows.slice(i, i + batchSize));
+    const inserted = await db
+      .insert(brandMemory)
+      .values(rows.slice(i, i + batchSize))
+      .returning({ id: brandMemory.id });
+    for (const r of inserted) insertedIds.push(r.id);
   }
+
+  // Embedding is best-effort; failures are logged in embedBrandMemoryChunks.
+  // Fire-and-forget so ingestion's primary path stays fast.
+  void embedBrandMemoryChunks({
+    organizationId: params.organizationId,
+    chunkIds: insertedIds,
+  }).then((result) => {
+    if (result.reason) {
+      console.log(`[ingest] embedding skipped: ${result.reason}`);
+    } else {
+      console.log(`[ingest] embedded ${result.embedded}/${insertedIds.length} chunks`);
+    }
+  });
+
   return rows.length;
 }

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { OrgBadge } from './OrgBadge';
 import { SidebarNav } from './SidebarNav';
 import { UserMenu } from './UserMenu';
+import { NotificationsBell } from './NotificationsBell';
 
 export function AppShell({
   children,
@@ -19,6 +20,9 @@ export function AppShell({
           <OrgBadge name={orgName} />
         </div>
         <SidebarNav />
+        <div className="border-t border-stone-200 p-2">
+          <NotificationsBell />
+        </div>
         <div className="border-t border-stone-200 p-2">
           <UserMenu name={user.name} email={user.email} />
         </div>

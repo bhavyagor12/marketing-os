@@ -71,7 +71,7 @@ export async function processIngestWebsite(job: Job<IngestWebsiteJob>) {
   console.log(`[ingest-website] source=${sourceId} url=${url}`);
 
   try {
-    await markProcessing(sourceId);
+    const sourceRow = await markProcessing(sourceId);
 
     const visited = new Set<string>();
     const queue: string[] = [url];
@@ -99,7 +99,7 @@ export async function processIngestWebsite(job: Job<IngestWebsiteJob>) {
         const saved = await saveChunks({
           organizationId,
           sourceId,
-          sourceType: 'website',
+          sourceType: sourceRow.metadata && (sourceRow.metadata as Record<string, unknown>).competitorId ? 'competitor' : 'website',
           sourceUrl: current,
           title: title || null,
           createdByUserId: userId,

@@ -1,7 +1,8 @@
-import { Users, Sparkles, Package, Swords } from 'lucide-react';
+import { Users, Sparkles, Swords } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ScanCompetitorButton } from './ScanCompetitorButton';
 
 type Persona = {
   id: string;
@@ -235,6 +236,7 @@ export function CompetitorsCard({ competitors }: { competitors: Competitor[] }) 
                   </a>
                 ) : null}
               </div>
+              {c.website ? <ScanCompetitorButton competitorId={c.id} /> : null}
             </li>
           ))}
         </ul>

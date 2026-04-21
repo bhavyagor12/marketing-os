@@ -6,6 +6,7 @@ import {
   Bot,
   User as UserIcon,
   GitCommit,
+  GitCompare,
   CheckCircle2,
   XCircle,
   Clock,
@@ -20,15 +21,24 @@ import {
   events,
   user,
   member,
+  socialConnections,
+  publishes,
+  commitComments,
 } from '@marketing-os/db';
 import { PageHeader, PageBody } from '@/components/shell/AppShell';
 import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { ActivityFeed } from '@/components/events/ActivityFeed';
+import { CommitMetrics } from '@/components/metrics/CommitMetrics';
+import { loadCommitMetrics } from '@/lib/commit-metrics';
 import { requireOrgSession } from '@/lib/require-session';
 import { EditCommitForm } from './EditCommitForm';
 import { ReviewPanel } from './ReviewPanel';
+import { PublishPanel } from './PublishPanel';
+import { AttributionPanel } from './AttributionPanel';
+import { CommentsPanel } from './CommentsPanel';
+import { ImagePanel } from './ImagePanel';
 import { payloadToEditableText } from './payload-to-text';
 
 export default async function CommitPage({
@@ -37,7 +47,7 @@ export default async function CommitPage({
   params: Promise<{ id: string; commitId: string }>;
 }) {
   const { id, commitId } = await params;
-  const { activeOrgId } = await requireOrgSession();
+  const { session, activeOrgId } = await requireOrgSession();
 
   const [campaign] = await db
     .select()
@@ -86,6 +96,53 @@ export default async function CommitPage({
     .orderBy(desc(events.occurredAt))
     .limit(30);
 
+  const availableConnections = await db
+    .select({
+      id: socialConnections.id,
+      platform: socialConnections.platform,
+      accountHandle: socialConnections.accountHandle,
+    })
+    .from(socialConnections)
+    .where(
+      and(
+        eq(socialConnections.organizationId, activeOrgId),
+        eq(socialConnections.status, 'active'),
+      ),
+    );
+
+  const commitPublishes = await db
+    .select({
+      id: publishes.id,
+      platform: publishes.platform,
+      socialConnectionId: publishes.socialConnectionId,
+      scheduledFor: publishes.scheduledFor,
+      status: publishes.status,
+      externalUrl: publishes.externalUrl,
+      error: publishes.error,
+      publishedAt: publishes.publishedAt,
+      createdAt: publishes.createdAt,
+    })
+    .from(publishes)
+    .where(eq(publishes.commitId, commitId))
+    .orderBy(desc(publishes.createdAt));
+
+  const commitIdsToMeasure = [commitId];
+  if (commit.parentCommitId) commitIdsToMeasure.push(commit.parentCommitId);
+  const metricsMap = await loadCommitMetrics(commitIdsToMeasure);
+  const metrics = metricsMap.get(commitId)!;
+  const parentMetrics = commit.parentCommitId ? metricsMap.get(commit.parentCommitId) : null;
+
+  const commentsRows = await db
+    .select()
+    .from(commitComments)
+    .where(eq(commitComments.commitId, commitId))
+    .orderBy(commitComments.createdAt);
+
+  const trackingBaseUrl =
+    process.env.TRACKING_BASE_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    'http://localhost:3000';
+
   const members = await db
     .select({ userId: member.userId, name: user.name })
     .from(member)
@@ -97,6 +154,8 @@ export default async function CommitPage({
     users.find((u) => u.id === commit.authorUserId)?.name ?? 'Unknown';
 
   const initialText = asset ? payloadToEditableText(asset.payload as never) : '';
+
+  const attachedBlobIds = extractBlobIds(asset?.payload as never);
 
   return (
     <>
@@ -125,15 +184,28 @@ export default async function CommitPage({
           </span>
         }
         actions={
-          <Link href={`/dashboard/campaigns/${id}`}>
-            <Button
-              variant="secondary"
-              size="sm"
-              leadingIcon={<ArrowLeft className="h-3.5 w-3.5" />}
-            >
-              Back to campaign
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href={`/dashboard/campaigns/${id}`}>
+              <Button
+                variant="secondary"
+                size="sm"
+                leadingIcon={<ArrowLeft className="h-3.5 w-3.5" />}
+              >
+                Back
+              </Button>
+            </Link>
+            {commit.parentCommitId ? (
+              <Link href={`/dashboard/campaigns/${id}/commits/${commit.id}/diff`}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  leadingIcon={<GitCompare className="h-3.5 w-3.5" />}
+                >
+                  Compare to parent
+                </Button>
+              </Link>
+            ) : null}
+          </div>
         }
       />
       <PageBody>
@@ -158,6 +230,78 @@ export default async function CommitPage({
                 ) : (
                   <p className="text-sm text-stone-500">No asset on this commit.</p>
                 )}
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardHeader
+                title="Creative"
+                subtitle="Brand-aware image generation via OpenAI DALL-E 3."
+              />
+              <CardBody>
+                <ImagePanel
+                  commitId={commit.id}
+                  campaignId={id}
+                  attachedBlobIds={attachedBlobIds}
+                />
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardHeader
+                title="Publish"
+                subtitle="Send this commit to a connected platform, now or scheduled."
+              />
+              <CardBody>
+                <PublishPanel
+                  commitId={commit.id}
+                  connections={availableConnections}
+                  publishesForCommit={commitPublishes as never}
+                />
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardHeader
+                title="Performance"
+                subtitle={
+                  parentMetrics
+                    ? 'Current version vs. parent commit.'
+                    : 'External engagement attributed to this commit.'
+                }
+              />
+              <CardBody>
+                <CommitMetrics current={metrics} parent={parentMetrics} />
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardHeader
+                title="Attribution tools"
+                subtitle="Share tracked links and embed impression pixels."
+              />
+              <CardBody>
+                <AttributionPanel
+                  commitId={commit.id}
+                  trackingBaseUrl={trackingBaseUrl}
+                  clickCount={metrics.clicks}
+                  impressionCount={metrics.impressions}
+                />
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardHeader
+                title="Comments"
+                subtitle={`${commentsRows.length} total · resolve when addressed`}
+              />
+              <CardBody>
+                <CommentsPanel
+                  commitId={commit.id}
+                  currentUserId={session.user.id}
+                  comments={commentsRows as never}
+                  users={users}
+                />
               </CardBody>
             </Card>
 
@@ -264,6 +408,17 @@ export default async function CommitPage({
       </PageBody>
     </>
   );
+}
+
+function extractBlobIds(payload: unknown): string[] {
+  if (!payload || typeof payload !== 'object') return [];
+  const p = payload as { kind?: string; blobIds?: string[]; blobId?: string; slides?: { blobId?: string }[] };
+  if (p.kind === 'image' && Array.isArray(p.blobIds)) return p.blobIds;
+  if (p.kind === 'video' && typeof p.blobId === 'string') return [p.blobId];
+  if (p.kind === 'carousel' && Array.isArray(p.slides)) {
+    return p.slides.map((s) => s?.blobId).filter((id): id is string => !!id);
+  }
+  return [];
 }
 
 function LineageRow({

@@ -25,9 +25,11 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ActivityFeed } from '@/components/events/ActivityFeed';
+import { loadCommitMetrics, engagementScore } from '@/lib/commit-metrics';
 import { requireOrgSession } from '@/lib/require-session';
 import { RunPlannerButton } from './RunPlannerButton';
-import { PlanItemRow } from './PlanItemRow';
+import { PlanItemRow, type PlanItemDraft } from './PlanItemRow';
+import { PerformanceCard, type RankedCommit } from './PerformanceCard';
 
 export default async function CampaignPage({
   params,
@@ -60,12 +62,17 @@ export default async function CampaignPage({
       authorUserId: commits.authorUserId,
       createdAt: commits.createdAt,
       contentHash: commits.contentHash,
+      planItemIndex: commits.planItemIndex,
+      variantLabel: commits.variantLabel,
+      branchName: branches.name,
+      branchHeadCommitId: branches.headCommitId,
       assetContentType: assets.contentType,
       assetPlatforms: assets.platforms,
       assetPayload: assets.payload,
     })
     .from(commits)
     .leftJoin(assets, eq(assets.commitId, commits.id))
+    .innerJoin(branches, eq(branches.id, commits.branchId))
     .where(eq(commits.campaignId, id))
     .orderBy(desc(commits.createdAt));
 
@@ -87,6 +94,39 @@ export default async function CampaignPage({
   const draftsByPlanItem = new Map<number, typeof campaignCommits>();
   // Roughly group drafts per plan item by matching message prefix — good enough for now.
   const planPosts = campaign.plan?.posts ?? [];
+
+  const metricsByCommit = await loadCommitMetrics(campaignCommits.map((c) => c.id));
+  const rankedCommits: RankedCommit[] = campaignCommits
+    .map((c) => ({
+      id: c.id,
+      message: c.message,
+      contentType: c.assetContentType,
+      platforms: (c.assetPlatforms as string[] | null) ?? [],
+      authoredBy: c.authoredBy,
+      metrics: metricsByCommit.get(c.id)!,
+    }))
+    .sort((a, b) => engagementScore(b.metrics) - engagementScore(a.metrics));
+
+  // Group commits by plan item index for the plan display — each plan item shows its
+  // drafts (main branch) + any A/B variant branches.
+  const draftsByPlanIndex = new Map<number, PlanItemDraft[]>();
+  for (const c of campaignCommits) {
+    if (c.planItemIndex === null || c.planItemIndex === undefined) continue;
+    const draft: PlanItemDraft = {
+      id: c.id,
+      branchName: c.branchName,
+      variantLabel: c.variantLabel,
+      isHeadOfBranch: c.branchHeadCommitId === c.id,
+      message: c.message,
+      contentHash: c.contentHash,
+      createdAt: c.createdAt,
+      authoredBy: c.authoredBy,
+      metrics: metricsByCommit.get(c.id)!,
+    };
+    const arr = draftsByPlanIndex.get(c.planItemIndex) ?? [];
+    arr.push(draft);
+    draftsByPlanIndex.set(c.planItemIndex, arr);
+  }
 
   return (
     <>
@@ -115,6 +155,8 @@ export default async function CampaignPage({
       <PageBody>
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
           <div className="space-y-5 xl:col-span-2">
+            <PerformanceCard campaignId={id} commits={rankedCommits} />
+
             <Card>
               <CardHeader title="Brief" />
               <CardBody className="space-y-3 text-sm">
@@ -164,20 +206,19 @@ export default async function CampaignPage({
                       </p>
                     ) : null}
                     <ul className="divide-y divide-stone-200">
-                      {planPosts.map((item, i) => {
-                        const draftsForItem = campaignCommits.filter((c) =>
-                          c.message?.includes(`${item.platform} · ${item.contentType}`),
-                        );
-                        return (
-                          <PlanItemRow
-                            key={i}
-                            campaignId={id}
-                            index={i}
-                            item={item}
-                            draftCount={draftsForItem.length}
-                          />
-                        );
-                      })}
+                      {planPosts.map((item, i) => (
+                        <PlanItemRow
+                          key={i}
+                          campaignId={id}
+                          index={i}
+                          item={item}
+                          drafts={(draftsByPlanIndex.get(i) ?? []).sort(
+                            (a, b) =>
+                              new Date(b.createdAt).getTime() -
+                              new Date(a.createdAt).getTime(),
+                          )}
+                        />
+                      ))}
                     </ul>
                   </>
                 )}
