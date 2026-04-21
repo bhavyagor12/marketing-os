@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { cx } from '@/lib/cx';
 import { addAiProviderKey } from './actions';
 
-type Provider = 'anthropic' | 'openai' | 'voyage';
+type Provider = 'anthropic' | 'openai' | 'voyage' | 'heygen';
 
 export function AddApiKeyForm() {
   const [open, setOpen] = useState(false);
@@ -67,6 +67,7 @@ export function AddApiKeyForm() {
               { value: 'anthropic', label: 'Anthropic', disabled: false, tag: 'agents' },
               { value: 'openai', label: 'OpenAI', disabled: false, tag: 'images' },
               { value: 'voyage', label: 'Voyage', disabled: false, tag: 'embeddings' },
+              { value: 'heygen', label: 'HeyGen', disabled: false, tag: 'video' },
             ] as { value: Provider; label: string; disabled: boolean; tag: string | null }[]
           ).map((p) => {
             const active = p.value === provider;
@@ -121,7 +122,9 @@ export function AddApiKeyForm() {
                 ? 'sk-ant-api03-…'
                 : provider === 'voyage'
                   ? 'pa-…'
-                  : 'sk-…'
+                  : provider === 'heygen'
+                    ? 'Your HeyGen API key'
+                    : 'sk-…'
             }
             className="h-9 w-full rounded-md border border-stone-200 bg-white pl-9 pr-10 text-sm shadow-sm focus:border-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/10"
             autoComplete="off"

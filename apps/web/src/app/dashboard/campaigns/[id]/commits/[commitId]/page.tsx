@@ -24,6 +24,7 @@ import {
   socialConnections,
   publishes,
   commitComments,
+  agentRuns,
 } from '@marketing-os/db';
 import { PageHeader, PageBody } from '@/components/shell/AppShell';
 import { Card, CardHeader, CardBody } from '@/components/ui/Card';
@@ -39,6 +40,8 @@ import { PublishPanel } from './PublishPanel';
 import { AttributionPanel } from './AttributionPanel';
 import { CommentsPanel } from './CommentsPanel';
 import { ImagePanel } from './ImagePanel';
+import { VideoPanel } from './VideoPanel';
+import { ArticlePreview } from './ArticlePreview';
 import { payloadToEditableText } from './payload-to-text';
 
 export default async function CommitPage({
@@ -138,6 +141,22 @@ export default async function CommitPage({
     .where(eq(commitComments.commitId, commitId))
     .orderBy(commitComments.createdAt);
 
+  // Any in-flight video render for THIS commit — used to show "Rendering…" in VideoPanel.
+  const pendingVideoRuns = await db
+    .select({ id: agentRuns.id, startedAt: agentRuns.startedAt })
+    .from(agentRuns)
+    .where(
+      and(
+        eq(agentRuns.campaignId, campaign.id),
+        eq(agentRuns.status, 'running'),
+        eq(agentRuns.agentKind, 'creative'),
+      ),
+    )
+    .limit(5);
+  // The creative agent is shared between image + video — we use output shape to tell them
+  // apart, but for the UI it's fine to treat any running creative run as "in flight".
+  const pendingVideoRun = pendingVideoRuns[0] ?? null;
+
   const trackingBaseUrl =
     process.env.TRACKING_BASE_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
@@ -220,7 +239,21 @@ export default async function CommitPage({
                     : 'No asset attached'
                 }
               />
-              <CardBody>
+              <CardBody className="space-y-4">
+                {asset?.contentType === 'video' && attachedBlobIds[0] ? (
+                  <video
+                    controls
+                    src={`/api/media/${attachedBlobIds[0]}`}
+                    className="w-full rounded-md border border-stone-200 bg-black"
+                  />
+                ) : null}
+                {asset?.contentType === 'article' &&
+                (asset.payload as { kind?: string }).kind === 'article' ? (
+                  <ArticlePreview
+                    title={(asset.payload as { title: string }).title}
+                    bodyMarkdown={(asset.payload as { bodyMarkdown: string }).bodyMarkdown}
+                  />
+                ) : null}
                 {asset ? (
                   <EditCommitForm
                     campaignId={id}
@@ -236,14 +269,15 @@ export default async function CommitPage({
             <Card>
               <CardHeader
                 title="Creative"
-                subtitle="Brand-aware image generation via OpenAI DALL-E 3."
+                subtitle="Brand-aware image (DALL-E 3) and video (HeyGen) generation."
               />
-              <CardBody>
+              <CardBody className="space-y-4">
                 <ImagePanel
                   commitId={commit.id}
                   campaignId={id}
                   attachedBlobIds={attachedBlobIds}
                 />
+                <VideoPanel commitId={commit.id} pendingRun={pendingVideoRun} />
               </CardBody>
             </Card>
 

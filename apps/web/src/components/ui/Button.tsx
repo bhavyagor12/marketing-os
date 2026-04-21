@@ -16,10 +16,11 @@ const base =
 
 const variants: Record<Variant, string> = {
   primary:
-    'bg-stone-900 text-white hover:bg-stone-800 active:bg-stone-950 shadow-sm',
+    'bg-stone-900 text-white hover:bg-stone-800 active:bg-stone-950 shadow-sm dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white',
   secondary:
-    'bg-white text-stone-900 border border-stone-200 hover:bg-stone-50 hover:border-stone-300 shadow-sm',
-  ghost: 'text-stone-600 hover:bg-stone-100 hover:text-stone-900',
+    'bg-white text-stone-900 border border-stone-200 hover:bg-stone-50 hover:border-stone-300 shadow-sm dark:bg-stone-900 dark:text-stone-100 dark:border-stone-700 dark:hover:bg-stone-800 dark:hover:border-stone-600',
+  ghost:
+    'text-stone-600 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100',
   danger: 'bg-red-600 text-white hover:bg-red-500 shadow-sm',
 };
 

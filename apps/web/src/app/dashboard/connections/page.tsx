@@ -20,7 +20,12 @@ import { AddEmailForm } from './AddEmailForm';
 export default async function ConnectionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ connected?: string; x_error?: string; linkedin_error?: string }>;
+  searchParams: Promise<{
+    connected?: string;
+    x_error?: string;
+    linkedin_error?: string;
+    meta_error?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const { activeOrgId } = await requireOrgSession();
@@ -64,6 +69,15 @@ export default async function ConnectionsPage({
             <div>
               <p className="font-medium">LinkedIn connection failed</p>
               <p className="mt-0.5 text-xs">{sp.linkedin_error}</p>
+            </div>
+          </div>
+        ) : null}
+        {sp.meta_error ? (
+          <div className="mb-5 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-medium">Instagram connection failed</p>
+              <p className="mt-0.5 text-xs">{sp.meta_error}</p>
             </div>
           </div>
         ) : null}
@@ -127,6 +141,11 @@ export default async function ConnectionsPage({
                   <Link href="/api/connections/linkedin/start">
                     <Button size="sm" variant="secondary">
                       Connect LinkedIn
+                    </Button>
+                  </Link>
+                  <Link href="/api/connections/meta/start">
+                    <Button size="sm" variant="secondary">
+                      Connect Instagram
                     </Button>
                   </Link>
                 </div>

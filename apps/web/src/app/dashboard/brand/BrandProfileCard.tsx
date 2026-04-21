@@ -5,6 +5,8 @@ import { Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { CardBody, CardHeader } from '@/components/ui/Card';
 import { generateBrandProfile } from './actions';
+import { EditIdentityCard } from './EditIdentityCard';
+import { EditVoiceCard } from './EditVoiceCard';
 
 type Identity = {
   tradingName?: string;
@@ -101,23 +103,24 @@ export function BrandProfileCard({
       />
       <CardBody>
         {!hasProfile ? (
-          <p className="text-sm text-stone-500">
+          <p className="mb-5 text-sm text-stone-500">
             {ready
-              ? 'Generate to have Claude distill your sources into a full brand profile.'
-              : 'Ingest at least one source first, then generate your brand profile.'}
+              ? 'Generate to have Claude distill your sources into a full brand profile — or edit each section manually below.'
+              : 'Ingest at least one source first, then generate your brand profile — or edit each section manually below.'}
           </p>
-        ) : (
-          <div className="space-y-6">
-            {profile?.identity ? <IdentitySection i={profile.identity} /> : null}
-            {profile?.positioning ? <PositioningSection p={profile.positioning} /> : null}
-            {profile?.voice ? <VoiceSection v={profile.voice} /> : null}
-            {profile?.strategy ? <StrategySection s={profile.strategy} /> : null}
-            {profile?.constraints ? <ConstraintsSection c={profile.constraints} /> : null}
+        ) : null}
+        <div className="space-y-6">
+          <EditIdentityCard initial={profile?.identity ?? {}} />
+          {profile?.positioning ? <PositioningSection p={profile.positioning} /> : null}
+          <EditVoiceCard initial={profile?.voice ?? {}} />
+          {profile?.strategy ? <StrategySection s={profile.strategy} /> : null}
+          {profile?.constraints ? <ConstraintsSection c={profile.constraints} /> : null}
+          {hasProfile ? (
             <p className="pt-1 text-xs text-stone-400">
               Updated {new Date(profile!.updatedAt).toLocaleString()}
             </p>
-          </div>
-        )}
+          ) : null}
+        </div>
       </CardBody>
     </>
   );

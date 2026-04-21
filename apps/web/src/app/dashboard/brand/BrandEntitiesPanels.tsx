@@ -3,6 +3,9 @@ import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ScanCompetitorButton } from './ScanCompetitorButton';
+import { AddPersonaForm, DeletePersonaButton } from './PersonaActions';
+import { AddValuePropForm, DeleteValuePropButton } from './ValuePropActions';
+import { AddCompetitorForm, DeleteCompetitorButton } from './CompetitorActions';
 
 type Persona = {
   id: string;
@@ -47,22 +50,26 @@ export function PersonasCard({ personas }: { personas: Persona[] }) {
       <CardHeader
         title="Audience personas"
         subtitle={`${personas.length} defined`}
+        action={<AddPersonaForm />}
       />
       <CardBody>
         {personas.length === 0 ? (
           <EmptyState
             icon={<Users className="h-4 w-4" />}
             title="No personas yet"
-            description="Generate a brand profile — Claude will derive personas from your content."
+            description="Generate a brand profile — Claude will derive personas from your content — or add them manually."
           />
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {personas.map((p) => (
               <div
                 key={p.id}
-                className="rounded-md border border-stone-200 bg-white p-4"
+                className="relative rounded-md border border-stone-200 bg-white p-4"
               >
-                <h4 className="text-sm font-semibold text-stone-900">{p.name}</h4>
+                <div className="absolute right-2 top-2">
+                  <DeletePersonaButton personaId={p.id} name={p.name} />
+                </div>
+                <h4 className="pr-8 text-sm font-semibold text-stone-900">{p.name}</h4>
                 {p.description ? (
                   <p className="mt-1 text-sm leading-relaxed text-stone-700">{p.description}</p>
                 ) : null}
@@ -100,26 +107,32 @@ export function ValuePropsCard({ props }: { props: ValueProp[] }) {
       <CardHeader
         title="Value propositions"
         subtitle={`${props.length} defined`}
+        action={<AddValuePropForm />}
       />
       <CardBody>
         {props.length === 0 ? (
           <EmptyState
             icon={<Sparkles className="h-4 w-4" />}
             title="No value propositions yet"
-            description="Generate a brand profile to surface what you're selling."
+            description="Generate a brand profile to surface what you're selling — or add them manually."
           />
         ) : (
           <ol className="space-y-2">
             {props.map((v, i) => (
               <li
                 key={v.id}
-                className="flex gap-3 rounded-md border border-stone-200 bg-white p-3"
+                className="group flex gap-3 rounded-md border border-stone-200 bg-white p-3"
               >
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-900 text-[11px] font-semibold text-white">
                   {i + 1}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-stone-900">{v.title}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold text-stone-900">{v.title}</p>
+                    <div className="opacity-0 transition group-hover:opacity-100">
+                      <DeleteValuePropButton id={v.id} title={v.title} />
+                    </div>
+                  </div>
                   {v.description ? (
                     <p className="mt-0.5 text-sm leading-relaxed text-stone-700">
                       {v.description}
@@ -192,15 +205,24 @@ export function ProductsCard({ products }: { products: Product[] }) {
 }
 
 export function CompetitorsCard({ competitors }: { competitors: Competitor[] }) {
-  if (competitors.length === 0) return null;
-
   return (
     <Card>
-      <CardHeader title="Competitors" subtitle={`${competitors.length} named`} />
+      <CardHeader
+        title="Competitors"
+        subtitle={`${competitors.length} named`}
+        action={<AddCompetitorForm />}
+      />
       <CardBody>
+        {competitors.length === 0 ? (
+          <EmptyState
+            icon={<Swords className="h-4 w-4" />}
+            title="No competitors yet"
+            description="Add named competitors to inform positioning — and scan their sites to feed brand memory."
+          />
+        ) : (
         <ul className="divide-y divide-stone-200">
           {competitors.map((c) => (
-            <li key={c.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+            <li key={c.id} className="group flex items-start gap-3 py-3 first:pt-0 last:pb-0">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-stone-100 text-stone-600">
                 <Swords className="h-4 w-4" />
               </span>
@@ -237,9 +259,13 @@ export function CompetitorsCard({ competitors }: { competitors: Competitor[] }) 
                 ) : null}
               </div>
               {c.website ? <ScanCompetitorButton competitorId={c.id} /> : null}
+              <div className="opacity-0 transition group-hover:opacity-100">
+                <DeleteCompetitorButton id={c.id} name={c.name} />
+              </div>
             </li>
           ))}
         </ul>
+        )}
       </CardBody>
     </Card>
   );

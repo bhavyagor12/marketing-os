@@ -11,6 +11,7 @@ import {
   Settings,
   Activity,
   UserSquare,
+  Send,
   type LucideIcon,
 } from 'lucide-react';
 import { cx } from '@/lib/cx';
@@ -24,6 +25,7 @@ const GROUPS: { heading?: string; items: NavItem[] }[] = [
       { href: '/dashboard/activity', label: 'Activity', icon: Activity },
       { href: '/dashboard/campaigns', label: 'Campaigns', icon: Megaphone },
       { href: '/dashboard/leads', label: 'Leads', icon: UserSquare },
+      { href: '/dashboard/sequences', label: 'Sequences', icon: Send },
       { href: '/dashboard/brand', label: 'Brand', icon: Sparkles },
     ],
   },
@@ -63,14 +65,16 @@ export function SidebarNav() {
                     className={cx(
                       'group flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition',
                       active
-                        ? 'bg-stone-900 text-white shadow-sm'
-                        : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900',
+                        ? 'bg-stone-900 text-white shadow-sm dark:bg-stone-100 dark:text-stone-900'
+                        : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100',
                     )}
                   >
                     <Icon
                       className={cx(
                         'h-4 w-4 shrink-0',
-                        active ? 'text-white' : 'text-stone-400 group-hover:text-stone-600',
+                        active
+                          ? 'text-white dark:text-stone-900'
+                          : 'text-stone-400 group-hover:text-stone-600 dark:text-stone-500 dark:group-hover:text-stone-300',
                       )}
                     />
                     <span className="truncate">{item.label}</span>

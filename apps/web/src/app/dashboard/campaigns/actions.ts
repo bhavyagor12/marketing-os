@@ -649,6 +649,17 @@ function draftToPayload(
     }
     return { kind: 'email', subject: 'Untitled', bodyMarkdown: draft };
   }
+  if (contentType === 'article') {
+    const match = draft.match(/^\s*#\s+(.+?)\s*\n([\s\S]*)$/);
+    if (match) {
+      return {
+        kind: 'article',
+        title: match[1]!.trim(),
+        bodyMarkdown: match[2]!.trim(),
+      };
+    }
+    return { kind: 'article', title: 'Untitled', bodyMarkdown: draft };
+  }
   // text_post / image / video / carousel — we only have the text piece right now;
   // media blob IDs get attached by a separate creative agent later.
   return { kind: 'text_post', body: draft };
@@ -692,6 +703,20 @@ function applyEditToPayload(original: AssetPayload, rawText: string): AssetPaylo
       ...original,
       slides: original.slides.map((s, i) => (i === 0 ? { ...s, caption: rawText } : s)),
     };
+  }
+  if (original.kind === 'article') {
+    const match = rawText.match(/^\s*#\s+(.+?)\s*\n([\s\S]*)$/);
+    if (match) {
+      return {
+        kind: 'article',
+        title: match[1]!.trim(),
+        bodyMarkdown: match[2]!.trim(),
+        slug: original.slug,
+        excerpt: original.excerpt,
+        heroBlobId: original.heroBlobId,
+      };
+    }
+    return { ...original, bodyMarkdown: rawText };
   }
   return { kind: 'text_post', body: rawText };
 }
@@ -918,6 +943,7 @@ function payloadToPlainText(payload: AssetPayload | null): string {
   if (payload.kind === 'image') return payload.caption;
   if (payload.kind === 'video') return payload.caption;
   if (payload.kind === 'carousel') return payload.slides.map((s) => s.caption ?? '').join('\n\n');
+  if (payload.kind === 'article') return `${payload.title}\n\n${payload.bodyMarkdown}`;
   return '';
 }
 
@@ -1142,7 +1168,139 @@ function captionFromParent(
   if (parentPayload.kind === 'email') return parentPayload.subject;
   if (parentPayload.kind === 'image') return parentPayload.caption;
   if (parentPayload.kind === 'carousel') return parentPayload.slides[0]?.caption ?? '';
+  if (parentPayload.kind === 'article') return parentPayload.excerpt ?? parentPayload.title;
   return planItem?.hook ?? '';
+}
+
+// ---------------------------------------------------------------------------
+// Video generation — HeyGen submit + worker polls
+// ---------------------------------------------------------------------------
+
+export async function generateVideoForCommit(params: {
+  commitId: string;
+  script?: string | null;
+  avatarId?: string | null;
+  voiceId?: string | null;
+}) {
+  const { session, activeOrgId } = await requireOrgSession();
+
+  const [parent] = await db
+    .select()
+    .from(commits)
+    .where(eq(commits.id, params.commitId))
+    .limit(1);
+  if (!parent) return { error: 'commit not found' };
+
+  const [campaign] = await db
+    .select()
+    .from(campaigns)
+    .where(eq(campaigns.id, parent.campaignId))
+    .limit(1);
+  if (!campaign) return { error: 'campaign not found' };
+
+  const planItem =
+    parent.planItemIndex !== null && parent.planItemIndex !== undefined
+      ? (campaign.plan?.posts?.[parent.planItemIndex] ?? null)
+      : null;
+
+  const [run] = await db
+    .insert(agentRuns)
+    .values({
+      organizationId: activeOrgId,
+      campaignId: parent.campaignId,
+      agentKind: 'creative',
+      status: 'running',
+      input: {
+        kind: 'video',
+        planItem,
+        script: params.script ?? null,
+      } as never,
+      startedAt: new Date(),
+      triggeredByUserId: session.user.id,
+    })
+    .returning();
+
+  await emit({
+    organizationId: activeOrgId,
+    type: EventType.AgentRunStarted,
+    actor: { userId: session.user.id },
+    subject: { type: EventSubjectType.AgentRun, id: run!.id },
+    campaignId: parent.campaignId,
+    commitId: parent.id,
+    properties: { kind: 'video' },
+    message: 'Generating video via HeyGen (1-5 min)',
+  });
+
+  try {
+    const submit = await callAgent('/agents/video/submit', {
+      organization_id: activeOrgId,
+      plan_item: planItem,
+      script: params.script ?? undefined,
+      avatar_id: params.avatarId ?? undefined,
+      voice_id: params.voiceId ?? undefined,
+    });
+    const videoId = String(submit.video_id ?? '');
+    const script = String(submit.script ?? '');
+    if (!videoId) throw new Error('HeyGen submit returned no video_id');
+
+    // Store the HeyGen id on the agent run so the UI can show it while rendering
+    await db
+      .update(agentRuns)
+      .set({
+        output: { heygenVideoId: videoId, script, phase: 'rendering' } as never,
+      })
+      .where(eq(agentRuns.id, run!.id));
+
+    const { Queue } = await import('bullmq');
+    const IORedis = (await import('ioredis')).default;
+    const connection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+      maxRetriesPerRequest: null,
+    });
+    const q = new Queue('video-poll', { connection });
+    try {
+      await q.add(
+        'poll',
+        {
+          organizationId: activeOrgId,
+          agentRunId: run!.id,
+          campaignId: parent.campaignId,
+          parentCommitId: parent.id,
+          videoId,
+          script,
+          userId: session.user.id,
+          pollAttempt: 1,
+        },
+        {
+          delay: 30_000, // first poll in 30s
+          removeOnComplete: 100,
+          removeOnFail: 200,
+        },
+      );
+    } finally {
+      await q.close();
+      await connection.quit();
+    }
+
+    revalidatePath(`/dashboard/campaigns/${parent.campaignId}/commits/${parent.id}`);
+    return { ok: true, agentRunId: run!.id, videoId };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await db
+      .update(agentRuns)
+      .set({ status: 'failed', error: message, completedAt: new Date() })
+      .where(eq(agentRuns.id, run!.id));
+    await emit({
+      organizationId: activeOrgId,
+      type: EventType.AgentRunFailed,
+      actor: { userId: session.user.id },
+      subject: { type: EventSubjectType.AgentRun, id: run!.id },
+      campaignId: parent.campaignId,
+      commitId: parent.id,
+      properties: { kind: 'video', error: message },
+      message: `Video submission failed: ${message}`,
+    });
+    return { error: message };
+  }
 }
 
 // ---------------------------------------------------------------------------

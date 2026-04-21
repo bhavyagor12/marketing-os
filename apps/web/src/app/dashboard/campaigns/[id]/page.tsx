@@ -30,6 +30,7 @@ import { requireOrgSession } from '@/lib/require-session';
 import { RunPlannerButton } from './RunPlannerButton';
 import { PlanItemRow, type PlanItemDraft } from './PlanItemRow';
 import { PerformanceCard, type RankedCommit } from './PerformanceCard';
+import { BranchesPanel, type BranchRow } from './BranchesPanel';
 
 export default async function CampaignPage({
   params,
@@ -75,6 +76,35 @@ export default async function CampaignPage({
     .innerJoin(branches, eq(branches.id, commits.branchId))
     .where(eq(commits.campaignId, id))
     .orderBy(desc(commits.createdAt));
+
+  const branchRows = await db
+    .select({
+      id: branches.id,
+      name: branches.name,
+      headCommitId: branches.headCommitId,
+      headMessage: commits.message,
+      headContentHash: commits.contentHash,
+      headCreatedAt: commits.createdAt,
+    })
+    .from(branches)
+    .leftJoin(commits, eq(commits.id, branches.headCommitId))
+    .where(eq(branches.campaignId, id));
+
+  const commitsByBranch = new Map<string, number>();
+  for (const c of campaignCommits) {
+    commitsByBranch.set(c.branchId, (commitsByBranch.get(c.branchId) ?? 0) + 1);
+  }
+  const branchList: BranchRow[] = branchRows
+    .map((b) => ({
+      id: b.id,
+      name: b.name,
+      headCommitId: b.headCommitId,
+      headMessage: b.headMessage,
+      headContentHash: b.headContentHash,
+      headCreatedAt: b.headCreatedAt,
+      commitCount: commitsByBranch.get(b.id) ?? 0,
+    }))
+    .sort((a, b) => (a.name === 'main' ? -1 : b.name === 'main' ? 1 : a.name.localeCompare(b.name)));
 
   const campaignEvents = await db
     .select()
@@ -291,7 +321,8 @@ export default async function CampaignPage({
             </Card>
           </div>
 
-          <div>
+          <div className="space-y-5">
+            <BranchesPanel campaignId={id} branches={branchList} />
             <Card>
               <CardHeader title="Timeline" subtitle="Every action on this campaign." />
               <CardBody>

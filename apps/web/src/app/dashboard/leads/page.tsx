@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { eq, desc, sql } from 'drizzle-orm';
 import { Users, ArrowUpRight } from 'lucide-react';
-import { db, leads } from '@marketing-os/db';
+import { db, leads, outreachSequences } from '@marketing-os/db';
 import { PageHeader, PageBody } from '@/components/shell/AppShell';
 import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -10,6 +10,7 @@ import { requireOrgSession } from '@/lib/require-session';
 import { AddLeadForm } from './AddLeadForm';
 import { ImportCsvForm } from './ImportCsvForm';
 import { LeadStatusMenu } from './LeadStatusMenu';
+import { EnrollLeadButton } from './EnrollLeadButton';
 
 export default async function LeadsPage() {
   const { activeOrgId } = await requireOrgSession();
@@ -34,6 +35,17 @@ export default async function LeadsPage() {
     })
     .from(leads)
     .where(eq(leads.organizationId, activeOrgId));
+
+  const sequences = await db
+    .select({
+      id: outreachSequences.id,
+      name: outreachSequences.name,
+      status: outreachSequences.status,
+    })
+    .from(outreachSequences)
+    .where(eq(outreachSequences.organizationId, activeOrgId))
+    .orderBy(desc(outreachSequences.createdAt))
+    .limit(20);
 
   return (
     <>
@@ -95,6 +107,7 @@ export default async function LeadsPage() {
                             </div>
                             <ArrowUpRight className="h-4 w-4 text-stone-300 group-hover:text-stone-500" />
                           </Link>
+                          <EnrollLeadButton leadId={l.id} sequences={sequences} />
                           <LeadStatusMenu leadId={l.id} status={l.status} />
                         </li>
                       );

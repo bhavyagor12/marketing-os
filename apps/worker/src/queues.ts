@@ -38,3 +38,23 @@ export const publishQueue = new Queue<PublishJob>('publish', { connection });
 export const analyticsQueue = new Queue<AnalyticsJob>('analytics', { connection });
 export const ingestWebsiteQueue = new Queue<IngestWebsiteJob>('ingest-website', { connection });
 export const ingestPdfQueue = new Queue<IngestPdfJob>('ingest-pdf', { connection });
+
+export type OutreachStepJob = {
+  enrollmentId: string;
+  organizationId: string;
+};
+
+export const outreachStepQueue = new Queue<OutreachStepJob>('outreach-step', { connection });
+
+export type VideoPollJob = {
+  organizationId: string;
+  agentRunId: string;
+  campaignId: string;
+  parentCommitId: string;
+  videoId: string;
+  script: string;
+  userId: string;
+  pollAttempt: number;
+};
+
+export const videoPollQueue = new Queue<VideoPollJob>('video-poll', { connection });

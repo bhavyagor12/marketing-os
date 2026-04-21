@@ -6,3 +6,5 @@ export * from './brand';
 export * from './workflow';
 export * from './events';
 export * from './crm';
+export * from './outreach';
+export * from './billing';

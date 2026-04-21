@@ -41,6 +41,15 @@ export const carouselPayloadSchema = z.object({
     .min(2),
 });
 
+export const articlePayloadSchema = z.object({
+  kind: z.literal('article'),
+  title: z.string().min(1),
+  slug: z.string().optional(),
+  excerpt: z.string().optional(),
+  bodyMarkdown: z.string().min(1),
+  heroBlobId: z.string().uuid().optional(),
+});
+
 export const assetPayloadSchema = z.discriminatedUnion('kind', [
   textPostPayloadSchema,
   threadPayloadSchema,
@@ -48,6 +57,7 @@ export const assetPayloadSchema = z.discriminatedUnion('kind', [
   videoPayloadSchema,
   emailPayloadSchema,
   carouselPayloadSchema,
+  articlePayloadSchema,
 ]);
 export type AssetPayload = z.infer<typeof assetPayloadSchema>;
 

@@ -9,6 +9,8 @@ import { processPublish } from './jobs/publish';
 import { processAnalytics } from './jobs/analytics';
 import { processIngestWebsite } from './jobs/ingest-website';
 import { processIngestPdf } from './jobs/ingest-pdf';
+import { processOutreachStep } from './jobs/outreach-step';
+import { processVideoPoll } from './jobs/video-poll';
 
 const publishWorker = new Worker('publish', processPublish, {
   connection,
@@ -30,11 +32,23 @@ const ingestPdfWorker = new Worker('ingest-pdf', processIngestPdf, {
   concurrency: 2,
 });
 
+const outreachStepWorker = new Worker('outreach-step', processOutreachStep, {
+  connection,
+  concurrency: 4,
+});
+
+const videoPollWorker = new Worker('video-poll', processVideoPoll, {
+  connection,
+  concurrency: 4,
+});
+
 for (const [name, w] of [
   ['publish', publishWorker],
   ['analytics', analyticsWorker],
   ['ingest-website', ingestWebsiteWorker],
   ['ingest-pdf', ingestPdfWorker],
+  ['outreach-step', outreachStepWorker],
+  ['video-poll', videoPollWorker],
 ] as const) {
   w.on('ready', () => console.log(`[worker] ${name} ready`));
   w.on('failed', (job, err) => console.error(`[worker] ${name} failed id=${job?.id}`, err));
@@ -47,6 +61,8 @@ async function shutdown() {
     analyticsWorker.close(),
     ingestWebsiteWorker.close(),
     ingestPdfWorker.close(),
+    outreachStepWorker.close(),
+    videoPollWorker.close(),
   ]);
   await connection.quit();
   process.exit(0);

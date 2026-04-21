@@ -14,6 +14,7 @@ import { decryptSecret } from '../lib/crypto';
 import { publishToX } from '../lib/publishers/x';
 import { publishToEmail } from '../lib/publishers/resend';
 import { publishToLinkedIn } from '../lib/publishers/linkedin';
+import { publishToInstagram } from '../lib/publishers/instagram';
 
 export async function processPublish(job: Job<PublishJob>) {
   const { publishId, organizationId } = job.data;
@@ -91,6 +92,14 @@ export async function processPublish(job: Job<PublishJob>) {
       const out = await publishToLinkedIn({
         accessToken,
         personSub: connection.externalAccountId,
+        commitId: commit.id,
+        payload: asset.payload as AssetPayload,
+      });
+      result = out;
+    } else if (connection.platform === 'instagram') {
+      const out = await publishToInstagram({
+        accessToken,
+        instagramUserId: connection.externalAccountId,
         commitId: commit.id,
         payload: asset.payload as AssetPayload,
       });

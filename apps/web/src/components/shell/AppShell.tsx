@@ -3,6 +3,7 @@ import { OrgBadge } from './OrgBadge';
 import { SidebarNav } from './SidebarNav';
 import { UserMenu } from './UserMenu';
 import { NotificationsBell } from './NotificationsBell';
+import { ThemeToggle } from './ThemeToggle';
 
 export function AppShell({
   children,
@@ -14,16 +15,19 @@ export function AppShell({
   orgName: string;
 }) {
   return (
-    <div className="flex h-dvh bg-stone-50 text-stone-900">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-stone-200 bg-white">
-        <div className="border-b border-stone-200 px-3 py-3">
+    <div className="flex h-dvh bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
+      <aside className="flex w-60 shrink-0 flex-col border-r border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
+        <div className="border-b border-stone-200 px-3 py-3 dark:border-stone-800">
           <OrgBadge name={orgName} />
         </div>
         <SidebarNav />
-        <div className="border-t border-stone-200 p-2">
+        <div className="border-t border-stone-200 p-2 dark:border-stone-800">
           <NotificationsBell />
         </div>
-        <div className="border-t border-stone-200 p-2">
+        <div className="border-t border-stone-200 p-2 dark:border-stone-800">
+          <ThemeToggle />
+        </div>
+        <div className="border-t border-stone-200 p-2 dark:border-stone-800">
           <UserMenu name={user.name} email={user.email} />
         </div>
       </aside>
@@ -42,10 +46,14 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-stone-200 bg-white/95 px-8 py-5 backdrop-blur">
+    <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-stone-200 bg-white/95 px-8 py-5 backdrop-blur dark:border-stone-800 dark:bg-stone-900/80">
       <div className="min-w-0">
-        <h1 className="text-lg font-semibold tracking-tight text-stone-900">{title}</h1>
-        {subtitle ? <p className="mt-0.5 text-sm text-stone-500">{subtitle}</p> : null}
+        <h1 className="text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-100">
+          {title}
+        </h1>
+        {subtitle ? (
+          <p className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">{subtitle}</p>
+        ) : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
     </header>

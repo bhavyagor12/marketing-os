@@ -62,10 +62,24 @@ export const EventType = {
   SocialConnected: 'integration.social.connected',
   SocialDisconnected: 'integration.social.disconnected',
 
-  // --- Outreach (for future AI SDR agent) ---
+  // --- Outreach (AI SDR agent) ---
+  SequenceCreated: 'sequence.created',
+  SequenceStatusChanged: 'sequence.status_changed',
+  EnrollmentStarted: 'enrollment.started',
+  EnrollmentStopped: 'enrollment.stopped',
+  EnrollmentCompleted: 'enrollment.completed',
   OutreachSent: 'outreach.sent',
+  OutreachOpened: 'outreach.opened',
+  OutreachClicked: 'outreach.clicked',
   OutreachReplied: 'outreach.replied',
   OutreachBounced: 'outreach.bounced',
+
+  // --- Billing ---
+  PlanUpgraded: 'plan.upgraded',
+  PlanDowngraded: 'plan.downgraded',
+  PlanCancelled: 'plan.cancelled',
+  PlanRenewed: 'plan.renewed',
+  PlanPaymentFailed: 'plan.payment_failed',
 
   // --- Leads / CRM ---
   LeadCreated: 'lead.created',
@@ -95,6 +109,8 @@ export const EventSubjectType = {
   SocialConnection: 'social_connection',
   Outreach: 'outreach',
   Lead: 'lead',
+  Sequence: 'sequence',
+  Enrollment: 'enrollment',
 } as const;
 
 export type EventSubjectTypeValue =

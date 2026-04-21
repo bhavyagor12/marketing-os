@@ -26,6 +26,9 @@ Content-type nuances:
 - thread (x): output multiple tweets separated by a blank line. Each <=280 chars.
 - text_post (x/linkedin/facebook/instagram): one piece.
 - email: follow the email convention above.
+- article (long-form blog post): start with a single "# Title" on the first line, then a
+  blank line, then the body in markdown with ## subheadings, 800-1500 words, conversational
+  but substantive, no fluff or listicle padding. End with a clear next step.
 
 Always:
 - Match voice.attributes; never use words in voice.avoid.
@@ -81,8 +84,9 @@ async def draft_node(state: ContentState) -> dict:
         organization_id=org_id, query=retrieval_query, k=6
     )
 
+    max_tokens = 4096 if content_type == "article" else 2048
     model = await make_anthropic(
-        organization_id=org_id, model="claude-sonnet-4-6", max_tokens=2048
+        organization_id=org_id, model="claude-sonnet-4-6", max_tokens=max_tokens
     )
 
     past_winners = state.get("past_winners") or []
